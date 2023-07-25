@@ -2,6 +2,7 @@ import telebot
 from telebot import types
 from telebot.async_telebot import AsyncTeleBot
 import asyncio
+import tools
 
 BOT_TOKEN = None
 with open('bot_token') as f:
@@ -26,5 +27,9 @@ async def show_commands(message):
     keyboard.add(button_bar)
 
     await BOT.reply_to(message, 'Select action:', reply_markup=keyboard)
+
+@BOT.message_handler(commands=['timer'])
+async def timer(message):
+    await BOT.reply_to(message, message.text)
 
 asyncio.run(BOT.polling())
