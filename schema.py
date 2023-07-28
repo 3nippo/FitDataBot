@@ -27,3 +27,6 @@ class Excercise(Base):
     name = mapped_column(String)
     unit = mapped_column(Enum(ExcerciseUnit))
     track_rpe = mapped_column(Boolean)
+
+    def __repr__(self) -> str:
+        return "{} {} {} {}".format(self.user_id, self.name, self.unit, self.track_rpe)

@@ -14,10 +14,6 @@ class TextCallback:
         return True
 
 
-def save_record(engine, record):
-    print(record)
-
-
 class AsyncTimer:
     def __init__(self, callback, every_sec, duration_sec):
         self.callback = callback
