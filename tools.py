@@ -26,6 +26,7 @@ class AsyncTimer:
     
     async def _job(self):
         ts = 0
+        await self.callback(ts)
         while ts < self.duration_sec:
             await asyncio.sleep(self.every_sec)
             ts += self.every_sec

@@ -22,8 +22,6 @@ async def main():
     bot = AsyncTeleBot(bot_token, state_storage=telebot.asyncio_storage.StateMemoryStorage())
 
     await bot.set_my_commands([
-        telebot.types.BotCommand('timer', 'timer with suggestions'),
-        telebot.types.BotCommand('howdy', 'says howdy'),
         telebot.types.BotCommand('add_excercise', 'create and save excercise'),
         telebot.types.BotCommand('start_excercise', 'mine train data!')
     ])

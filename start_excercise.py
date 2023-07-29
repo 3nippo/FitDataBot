@@ -25,8 +25,10 @@ class Context:
 
 
 TIMEOUT = 60 * 30
+TIME_STEP = 5
 USER_CTX = {}
 ENGINE = {}
+
 
 async def start_excercise(message, bot):
     excercises = storage.fetch_excercises(ENGINE, message.from_user.id)
@@ -42,16 +44,16 @@ async def start_excercise(message, bot):
     await bot.send_message(message.chat.id, 'Select excercise', reply_markup=keyboard)
 
 
-async def on_new_set_started(message, bot):
-    ctx = USER_CTX[message.from_user.id]
+async def on_new_set_started(user_id, chat_id, bot):
+    ctx = USER_CTX[user_id]
 
     ctx.new_set()
     
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(telebot.types.KeyboardButton('Cancel'))
 
-    await bot.set_state(message.from_user.id, states.StartExcerciseStates.enter_reps, message.chat.id)
-    await bot.send_message(message.chat.id, 'Enter reps done', reply_markup=keyboard)
+    await bot.set_state(user_id, states.StartExcerciseStates.enter_reps, chat_id)
+    await bot.send_message(chat_id, 'Enter reps done', reply_markup=keyboard)
 
 
 async def on_excercise_completed_or_cancelled(message, bot):
@@ -59,11 +61,16 @@ async def on_excercise_completed_or_cancelled(message, bot):
 
     ctx = USER_CTX[message.from_user.id]
 
+    text = None
     if ctx.sets_count == 0:
-        await bot.send_message(message.chat.id, 'Excercise cancelled')
+        text = 'Excercise cancelled'
     else:
+        text = 'Excercise completed'
+
+    if not ctx.set.empty():
         storage.save_record(ENGINE, ctx.set)
-        await bot.send_message(message.chat.id, 'Excercise completed')
+
+    await bot.send_message(message.chat.id, text, reply_markup=telebot.types.ReplyKeyboardRemove())
 
 
 async def on_rest_ended(message, bot):
@@ -72,7 +79,7 @@ async def on_rest_ended(message, bot):
 
     if message.text == 'Continue':
         ctx.set.rest = ctx.timer.elapsed()
-        await on_new_set_started(message, bot)
+        await on_new_set_started(message.from_user.id, message.chat.id, bot)
         return
     
     if message.text == 'Complete':
@@ -99,7 +106,7 @@ async def on_reps_entered_or_cancel(message, bot):
     async def send_passed_time(ts):
         await bot.send_message(message.chat.id, "{:0>2}:{:0>2}".format(int(ts/60), int(ts % 60)))
 
-    ctx.timer = tools.AsyncTimer(send_passed_time, 15, TIMEOUT)
+    ctx.timer = tools.AsyncTimer(send_passed_time, TIME_STEP, TIMEOUT)
 
     try:
         await ctx.timer.start()
@@ -125,7 +132,7 @@ async def on_excercise_selected(call, bot):
         callback_query_id=call.id, 
         text='OK! Excercise started'
     )
-    await on_new_set_started(call.message, bot)
+    await on_new_set_started(call.from_user.id, call.message.chat.id, bot)
     
 
 def register_handlers(bot, user_ctx, engine):
