@@ -1,4 +1,5 @@
 import asyncio
+import time
 
 
 class TextCallback:
@@ -20,6 +21,8 @@ class AsyncTimer:
         self.every_sec = every_sec
         self.duration_sec = duration_sec
         self.task = None
+        self.ts_start = int(time.time())
+        self.ts_end = None
     
     async def _job(self):
         ts = 0
@@ -27,6 +30,7 @@ class AsyncTimer:
             await asyncio.sleep(self.every_sec)
             ts += self.every_sec
             await self.callback(ts)
+        self.ts_end = int(time.time())
     
     async def start(self):
         if not self.task:
@@ -35,3 +39,8 @@ class AsyncTimer:
 
     def cancel(self):
         self.task.cancel()
+        self.ts_end = int(time.time())
+    
+    def elapsed(self):
+        assert self.ts_end, "Timer is not stopped!"
+        return self.ts_end - self.ts_start
