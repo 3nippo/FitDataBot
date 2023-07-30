@@ -32,9 +32,8 @@ async def start_excercise(message, bot):
     excercises = storage.fetch_excercises(ENGINE, message.from_user.id)
     
     keyboard = telebot.types.InlineKeyboardMarkup()
-    for excercise in excercises:
-        keyboard.add(telebot.types.InlineKeyboardButton(excercise.name, callback_data=str(excercise.id)))
-    keyboard.row_width = 2
+    for idx, excercise in enumerate(excercises):
+        keyboard.add(telebot.types.InlineKeyboardButton(excercise.name, callback_data=str(idx)))
 
     USER_CTX[message.from_user.id] = excercises
 
@@ -54,21 +53,28 @@ async def on_new_set_started(user_id, chat_id, bot):
     await bot.send_message(chat_id, 'Enter reps done', reply_markup=keyboard)
 
 
-async def on_excercise_completed_or_cancelled(message, bot):
+async def on_excercise_completed_or_cancelled(message, bot, completed):
     await bot.delete_state(message.from_user.id, message.chat.id)
 
     ctx = USER_CTX.pop(message.from_user.id)
 
-    text = None
-    if message.text == 'Cancel':
-        text = 'Excercise cancelled'
-    else:
-        text = 'Excercise completed'
+    text = 'Excercise completed' if completed else 'Excercise cancelled'
 
     if not ctx.set.empty():
         storage.save_record(ENGINE, ctx.set)
 
     await bot.send_message(message.chat.id, text, reply_markup=telebot.types.ReplyKeyboardRemove())
+
+
+async def ask_rpe(message, bot):
+    await bot.set_state(message.from_user.id, states.StartExcerciseStates.enter_rpe, message.chat.id)
+    await bot.send_message(message.chat.id, 'Enter RPE')
+
+
+async def on_rpe_entered(message, bot):
+    ctx = USER_CTX[message.from_user.id]
+    ctx.set.rpe = int(message.text)
+    await on_excercise_completed_or_cancelled(message, bot, completed=True)
 
 
 async def on_rest_ended(message, bot):
@@ -81,7 +87,10 @@ async def on_rest_ended(message, bot):
         return
     
     if message.text == 'Complete':
-        await on_excercise_completed_or_cancelled(message, bot)
+        if ctx.selected_excercise.track_rpe:
+            await ask_rpe(message, bot)
+        else:
+            await on_excercise_completed_or_cancelled(message, bot, completed=True)
         return
 
 
@@ -107,7 +116,7 @@ async def start_timer(message, bot):
 
 async def on_reps_entered_or_cancel(message, bot):
     if message.text == 'Cancel':
-        await on_excercise_completed_or_cancelled(message, bot)
+        await on_excercise_completed_or_cancelled(message, bot, completed=False)
         return
 
     ctx = USER_CTX[message.from_user.id]
@@ -122,7 +131,7 @@ async def on_reps_entered_or_cancel(message, bot):
 
 async def on_weight_entered_or_cancel(message, bot):
     if message.text == 'Cancel':
-        await on_excercise_completed_or_cancelled(message, bot)
+        await on_excercise_completed_or_cancelled(message, bot, completed=False)
         return
 
     ctx = USER_CTX[message.from_user.id]
@@ -134,14 +143,7 @@ async def on_weight_entered_or_cancel(message, bot):
 async def on_excercise_selected(call, bot):
     excercises = USER_CTX[call.from_user.id]
 
-    selected_excercise = None
-    for excercise in excercises:
-        if call.data == str(excercise.id):
-            selected_excercise = excercise
-            break
-    
-    if not selected_excercise:
-        assert False, "Unreachable"
+    selected_excercise = excercises[int(call.data)]
     
     USER_CTX[call.from_user.id] = Context(selected_excercise, call.from_user.id) 
 
@@ -181,5 +183,10 @@ def register_handlers(bot, user_ctx, engine):
     bot.register_message_handler(
         on_rest_ended,
         state=states.StartExcerciseStates.rest,
+        pass_bot=True
+    )
+    bot.register_message_handler(
+        on_rpe_entered,
+        state=states.StartExcerciseStates.enter_rpe,
         pass_bot=True
     )

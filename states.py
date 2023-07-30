@@ -18,4 +18,6 @@ class StartExcerciseStates(StatesGroup):
 
 
 class AnalyticsStates(StatesGroup):
-    nonspecific_choice = State()
+    analytics_choice = State()
+    enter_weeks = State()
+    select_excercise = State()
