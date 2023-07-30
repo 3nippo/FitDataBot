@@ -10,7 +10,6 @@ class Context:
     def __init__(self, selected_excercise, user_id):
         self.selected_excercise = selected_excercise
         self.timer = None
-        self.sets_count = 0
         self.user_id = user_id
         self.set = None
     
@@ -61,7 +60,7 @@ async def on_excercise_completed_or_cancelled(message, bot):
     ctx = USER_CTX.pop(message.from_user.id)
 
     text = None
-    if ctx.sets_count == 0:
+    if message.text == 'Cancel':
         text = 'Excercise cancelled'
     else:
         text = 'Excercise completed'
@@ -86,15 +85,7 @@ async def on_rest_ended(message, bot):
         return
 
 
-async def on_reps_entered_or_cancel(message, bot):
-    if message.text == 'Cancel':
-        await on_excercise_completed_or_cancelled(message, bot)
-        return
-
-    ctx = USER_CTX[message.from_user.id]
-    ctx.set.work = int(message.text)
-    ctx.sets_count += 1
-
+async def start_timer(message, bot):
     keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
     keyboard.add(telebot.types.KeyboardButton('Complete'))
     keyboard.add(telebot.types.KeyboardButton('Continue'))
@@ -105,12 +96,39 @@ async def on_reps_entered_or_cancel(message, bot):
     async def send_passed_time(ts):
         await bot.send_message(message.chat.id, "{:0>2}:{:0>2}".format(int(ts/60), int(ts % 60)))
 
+    ctx = USER_CTX[message.from_user.id]
     ctx.timer = tools.AsyncTimer(send_passed_time, TIME_STEP, TIMEOUT)
 
     try:
         await ctx.timer.start()
     except asyncio.CancelledError:
         pass
+
+
+async def on_reps_entered_or_cancel(message, bot):
+    if message.text == 'Cancel':
+        await on_excercise_completed_or_cancelled(message, bot)
+        return
+
+    ctx = USER_CTX[message.from_user.id]
+    ctx.set.work = int(message.text)
+
+    keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    keyboard.add(telebot.types.KeyboardButton('Cancel'))
+
+    await bot.set_state(message.from_user.id, states.StartExcerciseStates.enter_weight, message.chat.id)
+    await bot.send_message(message.chat.id, 'Enter moved weight', reply_markup=keyboard)
+
+
+async def on_weight_entered_or_cancel(message, bot):
+    if message.text == 'Cancel':
+        await on_excercise_completed_or_cancelled(message, bot)
+        return
+
+    ctx = USER_CTX[message.from_user.id]
+    ctx.set.weight = int(message.text)
+
+    await start_timer(message, bot)
 
 
 async def on_excercise_selected(call, bot):
@@ -153,6 +171,11 @@ def register_handlers(bot, user_ctx, engine):
     bot.register_message_handler(
         on_reps_entered_or_cancel,
         state=states.StartExcerciseStates.enter_reps,
+        pass_bot=True
+    )
+    bot.register_message_handler(
+        on_weight_entered_or_cancel,
+        state=states.StartExcerciseStates.enter_weight,
         pass_bot=True
     )
     bot.register_message_handler(

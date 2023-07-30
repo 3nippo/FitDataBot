@@ -5,11 +5,8 @@ from sqlalchemy import create_engine
 
 import add_excercise
 import start_excercise
+import analytics
 import schema
-
-
-USER_CB = {}
-USER_CTX = {}
 
 
 def get_telegram_token():
@@ -28,7 +25,8 @@ async def main():
 
     await bot.set_my_commands([
         telebot.types.BotCommand('add_excercise', 'create and save excercise'),
-        telebot.types.BotCommand('start_excercise', 'mine train data!')
+        telebot.types.BotCommand('start_excercise', 'mine train data!'),
+        telebot.types.BotCommand('analytics', 'draw some data')
     ])
 
     bot.add_custom_filter(telebot.asyncio_filters.StateFilter(bot))
@@ -41,8 +39,11 @@ async def main():
     # schema.Base.metadata.drop_all(engine)
     schema.Base.metadata.create_all(engine)
 
-    add_excercise.register_handlers(bot, USER_CTX, engine)
-    start_excercise.register_handlers(bot, USER_CTX, engine)
+    user_ctx = {}
+
+    add_excercise.register_handlers(bot, user_ctx, engine)
+    start_excercise.register_handlers(bot, user_ctx, engine)
+    analytics.register_handlers(bot, user_ctx, engine)
 
     await bot.polling()
 

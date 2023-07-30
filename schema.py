@@ -1,6 +1,7 @@
 import enum
+import datetime
 
-from sqlalchemy import Integer, String, Enum, Boolean, ForeignKey
+from sqlalchemy import Integer, String, Enum, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import mapped_column, relationship
@@ -40,8 +41,10 @@ class Set(Base):
     excercise_id = mapped_column(ForeignKey("excercise.id"))
     excercise = relationship('Excercise', back_populates='sets')
     work = mapped_column(Integer)
+    weight = mapped_column(Integer)
     rpe = mapped_column(Integer)
     rest = mapped_column(Integer)
+    datetime = mapped_column(DateTime, default=datetime.datetime.utcnow)
 
     def __repr__(self) -> str:
         return "{} {} {} {} {}".format(self.excercise_id, self.user_id, self.work, self.rpe, self.rest)
