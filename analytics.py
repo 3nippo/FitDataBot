@@ -36,8 +36,8 @@ async def on_analytics_choice(call, bot):
     await bot.send_message(call.message.chat.id, 'Enter weeks to analyze')
 
 
-async def ask_excercise(message, bot):
-    excercises = storage.fetch_excercises(ENGINE, message.from_user.id)
+async def ask_excercise(message, bot, only_rpe_tracked):
+    excercises = storage.fetch_excercises(ENGINE, message.from_user.id, only_rpe_tracked)
     
     keyboard = telebot.types.InlineKeyboardMarkup()
     for idx, excercise in enumerate(excercises):
@@ -47,7 +47,7 @@ async def ask_excercise(message, bot):
     ctx.excercises = excercises
 
     await bot.set_state(message.from_user.id, states.AnalyticsStates.select_excercise, message.chat.id)
-    await bot.send_message(message.chat.id, 'Select excercise')
+    await bot.send_message(message.chat.id, 'Select excercise', reply_markup=keyboard)
 
 
 def draw_result(result):
@@ -56,6 +56,8 @@ def draw_result(result):
 
 
 async def on_excercise_selected(call, bot):
+    await bot.answer_callback_query(callback_query_id=call.id)
+
     ctx = USER_CTX[call.from_user.id]
 
     excercise = ctx.excercises[int(call.data)]
@@ -85,7 +87,7 @@ async def on_weeks_entered(message, bot):
     elif ctx.selected_analytics == 'Total RPE':
         result = storage.fetch_total_rpe(ENGINE, message.from_user.id, ctx.weeks)
     elif ctx.selected_analytics in EXCERCISE_ANALYTICS:
-        await ask_excercise(message, bot)
+        await ask_excercise(message, bot, only_rpe_tracked='RPE' in ctx.selected_analytics)
         return
     else:
         assert False, "Unreachable"

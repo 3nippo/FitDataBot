@@ -9,8 +9,11 @@ def save_record(engine, record):
         session.commit()
 
 
-def fetch_excercises(engine, user_id):
+def fetch_excercises(engine, user_id, only_rpe_tracked=False):
     stmt = select(schema.Excercise).where(schema.Excercise.user_id == user_id)
+
+    if only_rpe_tracked:
+        stmt = stmt.where(schema.Excercise.track_rpe)
 
     with Session(engine) as session:
         return session.scalars(stmt).all()
@@ -88,7 +91,7 @@ def fetch_excercise_volume(engine, user_id, weeks, excercise_id):
         return session.execute(stmt).all()
 
 
-def fetch_excercise_volume(engine, user_id, weeks, excercise_id):
+def fetch_excercise_rpe(engine, user_id, weeks, excercise_id):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
@@ -112,7 +115,7 @@ def fetch_excercise_volume(engine, user_id, weeks, excercise_id):
         return session.execute(stmt).all()
 
 
-def fetch_excercise_volume(engine, user_id, weeks, excercise_id):
+def fetch_excercise_max_weight(engine, user_id, weeks, excercise_id):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
