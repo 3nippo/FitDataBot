@@ -9,14 +9,18 @@ def save_record(engine, record):
         session.commit()
 
 
-def fetch_excercises(engine, user_id, only_rpe_tracked=False):
+def save_record_with_session(session, record):
+    session.add(record)
+    session.commit()
+
+
+def fetch_excercises(session, user_id, only_rpe_tracked=False):
     stmt = select(schema.Excercise).where(schema.Excercise.user_id == user_id)
 
     if only_rpe_tracked:
         stmt = stmt.where(schema.Excercise.track_rpe)
 
-    with Session(engine) as session:
-        return session.scalars(stmt).all()
+    return session.scalars(stmt).all()
 
 
 def fetch_total_volume(engine, user_id, weeks):

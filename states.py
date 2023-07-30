@@ -15,6 +15,7 @@ class StartExcerciseStates(StatesGroup):
     enter_rpe = State()
     rest = State()
     timer_stopped = State()  # one more set or cancel 
+    timed_set = State()
 
 
 class AnalyticsStates(StatesGroup):
