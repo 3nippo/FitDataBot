@@ -1,6 +1,6 @@
 import schema
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import select, cast, Date, func
 import datetime
 
 def save_record(engine, record):
@@ -20,8 +20,8 @@ def fetch_total_volume(engine, user_id, weeks):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
-        (schema.Set.work * schema.Set.weight).label('volume'),
-        schema.Set.datetime
+        func.sum((schema.Set.work * schema.Set.weight)).label('volume'),
+        cast(schema.Set.datetime, Date).label('date')
     ).join(
         schema.Excercise
     ).where(
@@ -31,7 +31,9 @@ def fetch_total_volume(engine, user_id, weeks):
     ).where(
         schema.Set.user_id == user_id
     ).order_by(
-        schema.Set.datetime
+        'date'
+    ).group_by(
+        'date'
     )
 
     with Session(engine) as session:

@@ -21,7 +21,8 @@ async def draw_analytics(message, bot):
 async def on_nonspecific_choice(message, bot):
     if message.text == 'Total volume':
         result = storage.fetch_total_volume(ENGINE, message.from_user.id, 1)
-        print(result)
+        for el in result:
+            print(el._mapping)
 
     await bot.delete_state(message.from_user.id, message.chat.id)
 
