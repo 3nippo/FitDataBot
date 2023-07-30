@@ -21,7 +21,6 @@ class Context:
         self.set = schema.Set()
         self.set.excercise = self.selected_excercise
         self.set.user_id = self.user_id
-        
 
 
 TIMEOUT = 60 * 30
@@ -59,7 +58,7 @@ async def on_new_set_started(user_id, chat_id, bot):
 async def on_excercise_completed_or_cancelled(message, bot):
     await bot.delete_state(message.from_user.id, message.chat.id)
 
-    ctx = USER_CTX[message.from_user.id]
+    ctx = USER_CTX.pop(message.from_user.id)
 
     text = None
     if ctx.sets_count == 0:

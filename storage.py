@@ -1,21 +1,15 @@
 import schema
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 def save_record(engine, record):
-    print(record)
+    with Session(engine) as session:
+        session.add(record)
+        session.commit()
 
 
 def fetch_excercises(engine, user_id):
-    names = ['spooky', 'scary', 'skeletons']
-    
-    excercises = []
-    for idx, name in enumerate(names):
-        excercise = schema.Excercise()
-        excercise.id = idx
-        excercise.user_id = user_id
-        excercise.name = name
-        excercise.unit = schema.ExcerciseUnit.repetitions
-        excercise.track_rpe = True
+    stmt = select(schema.Excercise).where(schema.Excercise.user_id == user_id)
 
-        excercises.append(excercise)
-
-    return excercises
+    with Session(engine) as session:
+        return session.scalars(stmt).all()

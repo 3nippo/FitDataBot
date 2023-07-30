@@ -1,24 +1,29 @@
 import telebot
 from telebot.async_telebot import AsyncTeleBot
 import asyncio
-import tools
+from sqlalchemy import create_engine
 
 import add_excercise
 import start_excercise
-
-
-ENGINE = None
+import schema
 
 
 USER_CB = {}
 USER_CTX = {}
 
 
-async def main():
-    bot_token = None
+def get_telegram_token():
     with open('bot_token') as f:
-        bot_token = f.read().strip()
+        return f.read().strip()
 
+
+def get_db_pwd():
+    with open('db_pwd') as f:
+        return f.read().strip()
+
+
+async def main():
+    bot_token = get_telegram_token()
     bot = AsyncTeleBot(bot_token, state_storage=telebot.asyncio_storage.StateMemoryStorage())
 
     await bot.set_my_commands([
@@ -28,8 +33,16 @@ async def main():
 
     bot.add_custom_filter(telebot.asyncio_filters.StateFilter(bot))
 
-    add_excercise.register_handlers(bot, USER_CTX, ENGINE)
-    start_excercise.register_handlers(bot, USER_CTX, ENGINE)
+    db_pwd = get_db_pwd()
+    engine = create_engine(
+        'postgresql+psycopg://fitdatabot:{}@localhost:5432/fit_data_bot_db'.format(db_pwd), 
+        echo=True
+    )
+    # schema.Base.metadata.drop_all(engine)
+    schema.Base.metadata.create_all(engine)
+
+    add_excercise.register_handlers(bot, USER_CTX, engine)
+    start_excercise.register_handlers(bot, USER_CTX, engine)
 
     await bot.polling()
 
