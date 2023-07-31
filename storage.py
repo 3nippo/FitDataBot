@@ -27,8 +27,8 @@ def fetch_total_volume(engine, user_id, weeks):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
-        func.sum((schema.Set.work * schema.Set.weight)).label('volume'),
-        cast(schema.Set.datetime, Date).label('date')
+        cast(schema.Set.datetime, Date).label('date'),
+        func.sum((schema.Set.work * schema.Set.weight)).label('volume')
     ).join(
         schema.Excercise
     ).where(
@@ -44,15 +44,15 @@ def fetch_total_volume(engine, user_id, weeks):
     )
 
     with Session(engine) as session:
-        return session.execute(stmt).all()
+        return stmt.columns.keys(), session.execute(stmt).all()
 
 
 def fetch_total_rpe(engine, user_id, weeks):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
-        func.max(schema.Set.rpe).label('RPE'),
-        cast(schema.Set.datetime, Date).label('date')
+        cast(schema.Set.datetime, Date).label('date'),
+        func.max(schema.Set.rpe).label('RPE')
     ).join(
         schema.Excercise
     ).where(
@@ -68,15 +68,15 @@ def fetch_total_rpe(engine, user_id, weeks):
     )
 
     with Session(engine) as session:
-        return session.execute(stmt).all()
+        return stmt.columns.keys(), session.execute(stmt).all()
 
 
 def fetch_excercise_volume(engine, user_id, weeks, excercise_id):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
-        func.sum((schema.Set.work * schema.Set.weight)).label('volume'),
-        cast(schema.Set.datetime, Date).label('date')
+        cast(schema.Set.datetime, Date).label('date'),
+        func.sum((schema.Set.work * schema.Set.weight)).label('volume')
     ).join(
         schema.Excercise
     ).where(
@@ -92,15 +92,15 @@ def fetch_excercise_volume(engine, user_id, weeks, excercise_id):
     )
 
     with Session(engine) as session:
-        return session.execute(stmt).all()
+        return stmt.columns.keys(), session.execute(stmt).all()
 
 
 def fetch_excercise_rpe(engine, user_id, weeks, excercise_id):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
-        func.max(schema.Set.rpe).label('RPE'),
-        cast(schema.Set.datetime, Date).label('date')
+        cast(schema.Set.datetime, Date).label('date'),
+        func.max(schema.Set.rpe).label('RPE')
     ).join(
         schema.Excercise
     ).where(
@@ -116,15 +116,15 @@ def fetch_excercise_rpe(engine, user_id, weeks, excercise_id):
     )
 
     with Session(engine) as session:
-        return session.execute(stmt).all()
+        return stmt.columns.keys(), session.execute(stmt).all()
 
 
 def fetch_excercise_max_weight(engine, user_id, weeks, excercise_id):
     date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
 
     stmt = select(
-        func.max(schema.Set.weight).label('max weight'),
-        cast(schema.Set.datetime, Date).label('date')
+        cast(schema.Set.datetime, Date).label('date'),
+        func.max(schema.Set.weight).label('max weight')
     ).join(
         schema.Excercise
     ).where(
@@ -140,4 +140,4 @@ def fetch_excercise_max_weight(engine, user_id, weeks, excercise_id):
     )
 
     with Session(engine) as session:
-        return session.execute(stmt).all()
+        return stmt.columns.keys(), session.execute(stmt).all()

@@ -1,6 +1,8 @@
 import telebot
 import storage
 import states
+import matplotlib.pyplot as plt
+import tempfile
 
 
 class Context:
@@ -50,9 +52,20 @@ async def ask_excercise(message, bot, only_rpe_tracked):
     await bot.send_message(message.chat.id, 'Select excercise', reply_markup=keyboard)
 
 
-def draw_result(result):
-    for el in result:
-        print(el._mapping)
+async def draw_result(chat_id, bot, result):
+    keys, result = result
+    tmp_file = tempfile.NamedTemporaryFile(suffix='.png')
+
+    fig, ax = plt.subplots(figsize=(16, 12), nrows=1, ncols=1)
+    ax.scatter(*zip(*result), c='r')
+    ax.plot(*zip(*result))
+    ax.set_xlabel(keys[0])
+    ax.set_ylabel(keys[1])
+    fig.savefig(tmp_file)
+
+    await bot.send_document(chat_id, telebot.types.InputFile(tmp_file.name))
+
+    tmp_file.close()
 
 
 async def on_excercise_selected(call, bot):
@@ -72,7 +85,7 @@ async def on_excercise_selected(call, bot):
     else:
         assert False, "Unreachable"
 
-    draw_result(result)
+    await draw_result(call.chat.id, bot, result)
 
     await bot.delete_state(call.from_user.id, call.message.chat.id)
 
@@ -92,7 +105,7 @@ async def on_weeks_entered(message, bot):
     else:
         assert False, "Unreachable"
 
-    draw_result(result)
+    await draw_result(message.chat.id, bot, result)
 
     await bot.delete_state(message.from_user.id, message.chat.id)
 
