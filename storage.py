@@ -14,11 +14,19 @@ def save_record_with_session(session, record):
     session.commit()
 
 
-def fetch_excercises(session, user_id, only_rpe_tracked=False):
+def fetch_excercises(engine, user_id, only_rpe_tracked=False, unit=None):
+    with Session(engine) as session:
+        return fetch_excercises_with_session(session, user_id, only_rpe_tracked, unit)
+
+
+def fetch_excercises_with_session(session, user_id, only_rpe_tracked=False, unit=None):
     stmt = select(schema.Excercise).where(schema.Excercise.user_id == user_id)
 
     if only_rpe_tracked:
         stmt = stmt.where(schema.Excercise.track_rpe)
+
+    if unit:
+        stmt = stmt.where(schema.Excercise.unit == unit)
 
     return session.scalars(stmt).all()
 
@@ -125,6 +133,30 @@ def fetch_excercise_max_weight(engine, user_id, weeks, excercise_id):
     stmt = select(
         cast(schema.Set.datetime, Date).label('date'),
         func.max(schema.Set.weight).label('max weight')
+    ).join(
+        schema.Excercise
+    ).where(
+        schema.Excercise.id == excercise_id
+    ).where(
+        schema.Set.datetime >= date_from
+    ).where(
+        schema.Set.user_id == user_id
+    ).order_by(
+        'date'
+    ).group_by(
+        'date'
+    )
+
+    with Session(engine) as session:
+        return stmt.columns.keys(), session.execute(stmt).all()
+
+
+def fetch_excercise_time(engine, user_id, weeks, excercise_id):
+    date_from = datetime.datetime.utcnow() - datetime.timedelta(weeks=weeks)
+
+    stmt = select(
+        cast(schema.Set.datetime, Date).label('date'),
+        func.max(schema.Set.work).label('time')
     ).join(
         schema.Excercise
     ).where(

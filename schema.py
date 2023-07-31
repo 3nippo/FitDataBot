@@ -20,6 +20,12 @@ class ExcerciseUnit(enum.Enum):
     seconds = 1
     repetitions = 2
 
+    @staticmethod
+    def unit_from_analytics(analytics):
+        if 'time' in analytics:
+            return ExcerciseUnit.seconds
+        return ExcerciseUnit.repetitions
+
 
 class Excercise(Base):
     __tablename__ = 'excercise'

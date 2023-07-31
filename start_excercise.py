@@ -41,7 +41,7 @@ ENGINE = {}
 async def start_excercise(message, bot):
     session = Session(ENGINE)
 
-    excercises = storage.fetch_excercises(session, message.from_user.id)
+    excercises = storage.fetch_excercises_with_session(session, message.from_user.id)
     
     keyboard = telebot.types.InlineKeyboardMarkup()
     for idx, excercise in enumerate(excercises):

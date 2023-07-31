@@ -1,7 +1,9 @@
 import telebot
+import schema
 import storage
 import states
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 import tempfile
 
 
@@ -15,7 +17,7 @@ class Context:
 USER_CTX = None
 ENGINE = None
 TOTAL_ANALYTICS = ['Total volume', 'Total RPE']
-EXCERCISE_ANALYTICS = ['Excercise volume', 'Excercise RPE', 'Excercise max weight']
+EXCERCISE_ANALYTICS = ['Excercise volume', 'Excercise RPE', 'Excercise max weight', 'Excercise time']
 
 
 async def draw_analytics(message, bot):
@@ -38,8 +40,8 @@ async def on_analytics_choice(call, bot):
     await bot.send_message(call.message.chat.id, 'Enter weeks to analyze')
 
 
-async def ask_excercise(message, bot, only_rpe_tracked):
-    excercises = storage.fetch_excercises(ENGINE, message.from_user.id, only_rpe_tracked)
+async def ask_excercise(message, bot, only_rpe_tracked, unit):
+    excercises = storage.fetch_excercises(ENGINE, message.from_user.id, only_rpe_tracked, unit)
     
     keyboard = telebot.types.InlineKeyboardMarkup()
     for idx, excercise in enumerate(excercises):
@@ -54,9 +56,12 @@ async def ask_excercise(message, bot, only_rpe_tracked):
 
 async def draw_result(chat_id, bot, result):
     keys, result = result
+    print(result)
     tmp_file = tempfile.NamedTemporaryFile(suffix='.png')
 
     fig, ax = plt.subplots(figsize=(16, 12), nrows=1, ncols=1)
+    ax.xaxis.set_major_locator(mdates.DayLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter('%d/%m'))
     ax.scatter(*zip(*result), c='r')
     ax.plot(*zip(*result))
     ax.set_xlabel(keys[0])
@@ -82,10 +87,12 @@ async def on_excercise_selected(call, bot):
         result = storage.fetch_excercise_rpe(ENGINE, call.from_user.id, ctx.weeks, excercise.id)
     elif ctx.selected_analytics == 'Excercise max weight':
         result = storage.fetch_excercise_max_weight(ENGINE, call.from_user.id, ctx.weeks, excercise.id)
+    elif ctx.selected_analytics == 'Excercise time':
+        result = storage.fetch_excercise_time(ENGINE, call.from_user.id, ctx.weeks, excercise.id)
     else:
         assert False, "Unreachable"
 
-    await draw_result(call.chat.id, bot, result)
+    await draw_result(call.message.chat.id, bot, result)
 
     await bot.delete_state(call.from_user.id, call.message.chat.id)
 
@@ -100,7 +107,12 @@ async def on_weeks_entered(message, bot):
     elif ctx.selected_analytics == 'Total RPE':
         result = storage.fetch_total_rpe(ENGINE, message.from_user.id, ctx.weeks)
     elif ctx.selected_analytics in EXCERCISE_ANALYTICS:
-        await ask_excercise(message, bot, only_rpe_tracked='RPE' in ctx.selected_analytics)
+        await ask_excercise(
+            message, 
+            bot, 
+            only_rpe_tracked='RPE' in ctx.selected_analytics,
+            unit=schema.ExcerciseUnit.unit_from_analytics(ctx.selected_analytics)
+        )
         return
     else:
         assert False, "Unreachable"
