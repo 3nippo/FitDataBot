@@ -5,6 +5,14 @@ import states
 import schema
 import tools
 from sqlalchemy.orm import Session
+import random
+
+
+def get_random_gachis(num_to_choose):
+    return [
+        'https://media.githubusercontent.com/media/3nippo/FitDataBot/main/gachi_jpeg/{}.jpeg'.format(random.randint(0, 52))
+        for choice in random.sample(list(range(53)), num_to_choose)
+    ]
 
 
 class Context:
@@ -54,6 +62,32 @@ async def start_excercise(message, bot):
 
     await bot.set_state(message.from_user.id, states.StartExcerciseStates.choose_excercise, message.chat.id)
     await bot.send_message(message.chat.id, 'Select excercise', reply_markup=keyboard)
+
+
+async def on_inline_query(inline_query, bot):
+    excercises = storage.fetch_excercises(ENGINE, inline_query.from_user.id)
+    
+    excercise_name_fragment = inline_query.query.lower()
+    matched_excercises = [
+        excercise 
+        for excercise in excercises 
+        if excercise_name_fragment in excercise.name.lower()
+    ]
+
+    gachi_urls = get_random_gachis(len(matched_excercises))
+
+    inline_choices = [
+        telebot.types.InlineQueryResultArticle(
+            id=excercise.id,
+            thumbnail_url=gachi_urls[idx],
+            title=excercise.name,
+            input_message_content=telebot.types.InputTextMessageContent(excercise.name),
+        )
+        for idx, excercise in enumerate(matched_excercises)
+    ]
+
+    await bot.set_state(inline_query.from_user.id, states.StartExcerciseStates.choose_excercise_after_query)
+    await bot.answer_inline_query(inline_query.id, inline_choices, cache_time=1)
 
 
 async def on_timed_set(user_id, chat_id, bot):
@@ -204,7 +238,27 @@ async def on_excercise_selected(call, bot):
         text='OK! Excercise started'
     )
     await on_new_set_started(call.from_user.id, call.message.chat.id, bot)
+
+
+async def on_excercise_selected_after_query(message, bot):
+    session = Session(ENGINE)
+    excercises = storage.fetch_excercises_with_session(session, message.from_user.id)
     
+    ctx = Context(message.from_user.id)
+    ctx.session = session
+    ctx.excercises = excercises
+    USER_CTX[message.from_user.id] = ctx
+
+    for excercise in excercises:
+        if excercise.name == message.text:
+            ctx.selected_excercise = excercise
+            break
+
+    assert ctx.selected_excercise, "Something failed"
+
+    print('Hey')
+    await on_new_set_started(message.from_user.id, message.chat.id, bot)
+
 
 def register_handlers(bot, user_ctx, engine):
     global USER_CTX, ENGINE
@@ -245,5 +299,15 @@ def register_handlers(bot, user_ctx, engine):
     bot.register_message_handler(
         on_timed_set_done_or_cancel,
         state=states.StartExcerciseStates.timed_set,
+        pass_bot=True
+    )
+    bot.register_inline_handler(
+        on_inline_query,
+        lambda call: True,
+        pass_bot=True
+    )
+    bot.register_message_handler(
+        on_excercise_selected_after_query,
+        state=states.StartExcerciseStates.choose_excercise_after_query,
         pass_bot=True
     )

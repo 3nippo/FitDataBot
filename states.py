@@ -9,6 +9,7 @@ class AddExcerciseStates(StatesGroup):
 
 class StartExcerciseStates(StatesGroup):
     choose_excercise = State()
+    choose_excercise_after_query = State()
     accept_menu_choice = State()
     enter_reps = State()
     enter_weight = State()
