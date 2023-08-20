@@ -256,7 +256,6 @@ async def on_excercise_selected_after_query(message, bot):
 
     assert ctx.selected_excercise, "Something failed"
 
-    print('Hey')
     await on_new_set_started(message.from_user.id, message.chat.id, bot)
 
 
