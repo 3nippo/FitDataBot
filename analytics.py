@@ -12,6 +12,21 @@ class Context:
         self.selected_analytics = None
         self.weeks = None
         self.excercises = None
+        self.state_after_inline_query = None
+        self.excercise_search_options = storage.ExcerciseSearchOptions()
+
+
+def excercise_search_options_from_analytics(selected_analytics):
+    search_options = storage.ExcerciseSearchOptions()
+
+    if 'time' in selected_analytics:
+        search_options.unit = schema.ExcerciseUnit.seconds
+    else:
+        search_options.unit = schema.ExcerciseUnit.repetitions
+
+    search_options.only_rpe_tracked = 'RPE' in selected_analytics
+
+    return search_options
 
 
 USER_CTX = None
@@ -40,23 +55,8 @@ async def on_analytics_choice(call, bot):
     await bot.send_message(call.message.chat.id, 'Enter weeks to analyze')
 
 
-async def ask_excercise(message, bot, only_rpe_tracked, unit):
-    excercises = storage.fetch_excercises(ENGINE, message.from_user.id, only_rpe_tracked, unit)
-    
-    keyboard = telebot.types.InlineKeyboardMarkup()
-    for idx, excercise in enumerate(excercises):
-        keyboard.add(telebot.types.InlineKeyboardButton(excercise.name, callback_data=str(idx)))
-
-    ctx = USER_CTX[message.from_user.id]
-    ctx.excercises = excercises
-
-    await bot.set_state(message.from_user.id, states.AnalyticsStates.select_excercise, message.chat.id)
-    await bot.send_message(message.chat.id, 'Select excercise', reply_markup=keyboard)
-
-
-async def draw_result(chat_id, bot, result):
+async def draw_result_and_complete(user_id, chat_id, bot, result):
     keys, result = result
-    print(result)
     tmp_file = tempfile.NamedTemporaryFile(suffix='.png')
 
     fig, ax = plt.subplots(figsize=(16, 12), nrows=1, ncols=1)
@@ -72,29 +72,38 @@ async def draw_result(chat_id, bot, result):
 
     tmp_file.close()
 
+    USER_CTX.pop(user_id)
+    await bot.delete_state(user_id, chat_id)
 
-async def on_excercise_selected(call, bot):
-    await bot.answer_callback_query(callback_query_id=call.id)
 
-    ctx = USER_CTX[call.from_user.id]
+async def on_excercise_selected(message, bot):
+    excercises = storage.fetch_excercises(ENGINE, message.from_user.id)
 
-    excercise = ctx.excercises[int(call.data)]
+    selected_excercise = None
+
+    for excercise in excercises:
+        if excercise.name == message.text:
+            selected_excercise = excercise
+            break
+    
+    assert selected_excercise, "Bad excercise chosen"
+
+    ctx = USER_CTX[message.from_user.id]
 
     result = None
+    # TODO: make storage.fetch_excercise_parameter
     if ctx.selected_analytics == 'Excercise volume':
-        result = storage.fetch_excercise_volume(ENGINE, call.from_user.id, ctx.weeks, excercise.id)
+        result = storage.fetch_excercise_volume(ENGINE, message.from_user.id, ctx.weeks, excercise.id)
     elif ctx.selected_analytics == 'Excercise RPE':
-        result = storage.fetch_excercise_rpe(ENGINE, call.from_user.id, ctx.weeks, excercise.id)
+        result = storage.fetch_excercise_rpe(ENGINE, message.from_user.id, ctx.weeks, excercise.id)
     elif ctx.selected_analytics == 'Excercise max weight':
-        result = storage.fetch_excercise_max_weight(ENGINE, call.from_user.id, ctx.weeks, excercise.id)
+        result = storage.fetch_excercise_max_weight(ENGINE, message.from_user.id, ctx.weeks, excercise.id)
     elif ctx.selected_analytics == 'Excercise time':
-        result = storage.fetch_excercise_time(ENGINE, call.from_user.id, ctx.weeks, excercise.id)
+        result = storage.fetch_excercise_time(ENGINE, message.from_user.id, ctx.weeks, excercise.id)
     else:
         assert False, "Unreachable"
 
-    await draw_result(call.message.chat.id, bot, result)
-
-    await bot.delete_state(call.from_user.id, call.message.chat.id)
+    await draw_result_and_complete(message.from_user.id, message.chat.id, bot, result)
 
 
 async def on_weeks_entered(message, bot):
@@ -107,19 +116,14 @@ async def on_weeks_entered(message, bot):
     elif ctx.selected_analytics == 'Total RPE':
         result = storage.fetch_total_rpe(ENGINE, message.from_user.id, ctx.weeks)
     elif ctx.selected_analytics in EXCERCISE_ANALYTICS:
-        await ask_excercise(
-            message, 
-            bot, 
-            only_rpe_tracked='RPE' in ctx.selected_analytics,
-            unit=schema.ExcerciseUnit.unit_from_analytics(ctx.selected_analytics)
-        )
+        ctx.state_after_inline_query = states.AnalyticsStates.select_excercise
+        ctx.excercise_search_options = excercise_search_options_from_analytics(ctx.selected_analytics)
+        await bot.send_message(message.chat.id, 'Select excercise from @ menu')
         return
     else:
         assert False, "Unreachable"
 
-    await draw_result(message.chat.id, bot, result)
-
-    await bot.delete_state(message.from_user.id, message.chat.id)
+    await draw_result_and_complete(message.from_user.id, message.chat.id, bot, result)
 
 
 def register_handlers(bot, user_ctx, engine):
@@ -143,9 +147,8 @@ def register_handlers(bot, user_ctx, engine):
         state=states.AnalyticsStates.enter_weeks,
         pass_bot=True
     )
-    bot.register_callback_query_handler(
+    bot.register_message_handler(
         on_excercise_selected,
-        lambda call: True,
         state=states.AnalyticsStates.select_excercise,
         pass_bot=True
     )

@@ -65,7 +65,12 @@ async def start_excercise(message, bot):
 
 
 async def on_inline_query(inline_query, bot):
-    excercises = storage.fetch_excercises(ENGINE, inline_query.from_user.id)
+    ctx = USER_CTX.get(inline_query.from_user.id, {})
+    excercises = storage.fetch_excercises(
+        ENGINE, 
+        inline_query.from_user.id,
+        search_options=getattr(ctx, 'excercise_search_options', None) or storage.ExcerciseSearchOptions()
+    )
     
     excercise_name_fragment = inline_query.query.lower()
     matched_excercises = [
@@ -86,7 +91,10 @@ async def on_inline_query(inline_query, bot):
         for idx, excercise in enumerate(matched_excercises)
     ]
 
-    await bot.set_state(inline_query.from_user.id, states.StartExcerciseStates.choose_excercise_after_query)
+    await bot.set_state(
+        inline_query.from_user.id, 
+        getattr(ctx, 'state_after_inline_query', None) or states.StartExcerciseStates.choose_excercise_after_query
+    )
     await bot.answer_inline_query(inline_query.id, inline_choices, cache_time=1)
 
 
@@ -246,7 +254,6 @@ async def on_excercise_selected_after_query(message, bot):
     
     ctx = Context(message.from_user.id)
     ctx.session = session
-    ctx.excercises = excercises
     USER_CTX[message.from_user.id] = ctx
 
     for excercise in excercises:
