@@ -1,3 +1,4 @@
 .venv
 bot_token
 db_pwd
+ya_disk_oauth_token

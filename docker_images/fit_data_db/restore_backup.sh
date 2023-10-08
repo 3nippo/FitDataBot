@@ -1,0 +1,1 @@
+echo "restore started" > /var/log/restore_backup.log

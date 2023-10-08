@@ -1,0 +1,1 @@
+echo "backup started, token is $(cat /run/secrets/ya_disk_oauth_token), backup enabled: $BACKUP_ENABLED"
