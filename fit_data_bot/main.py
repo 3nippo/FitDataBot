@@ -10,12 +10,12 @@ import schema
 
 
 def get_telegram_token():
-    with open('bot_token') as f:
+    with open('/run/secrets/tg_bot_token') as f:
         return f.read().strip()
 
 
 def get_db_pwd():
-    with open('db_pwd') as f:
+    with open('/run/secrets/db_pwd') as f:
         return f.read().strip()
 
 
@@ -32,12 +32,18 @@ async def main():
     bot.add_custom_filter(telebot.asyncio_filters.StateFilter(bot))
 
     db_pwd = get_db_pwd()
+
     engine = create_engine(
-        'postgresql+psycopg://fitdatabot:{}@localhost:5432/fit_data_bot_db'.format(db_pwd), 
+        'postgresql+psycopg://postgres:{}@fit_data_db:5432/fit_data_db'.format(db_pwd), 
         echo=True
     )
+    
     # schema.Base.metadata.drop_all(engine)
-    schema.Base.metadata.create_all(engine)
+    for _ in range(6):
+        try:
+            schema.Base.metadata.create_all(engine)
+        except:
+            await asyncio.sleep(10)
 
     user_ctx = {}
 

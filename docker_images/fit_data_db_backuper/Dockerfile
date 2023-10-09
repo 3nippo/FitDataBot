@@ -1,6 +1,6 @@
 FROM postgres:latest
 
-RUN apt-get update && apt-get -y install cron
+RUN apt-get update && apt-get -y install cron curl jq
 
 COPY ./backup_db_cron /etc/cron.d/backup_db_cron
 RUN chmod 644 /etc/cron.d/backup_db_cron

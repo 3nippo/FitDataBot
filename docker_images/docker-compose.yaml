@@ -1,13 +1,16 @@
+version: '3.9'
+
 services:
   fit_data_db:
     build:
       context: ./fit_data_db
-      secrets:
-        - source: ya_disk_oauth_token
-          mode: 0400
-      image: fit_data_db
+    secrets:
+      - source: ya_disk_oauth_token
+        mode: 0400
+      - source: db_pwd
+        mode: 0400
     environment:
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_pwd
       POSTGRES_DB: fit_data_db
     ports:
       - "8000:5432"
@@ -15,12 +18,13 @@ services:
   fit_data_db_backuper:
     build:
       context: ./fit_data_db_backuper
-      secrets:
-        - source: ya_disk_oauth_token
-          mode: 0400
-      image: fit_data_db_backuper
+    secrets:
+      - source: ya_disk_oauth_token
+        mode: 0400
+      - source: db_pwd
+        mode: 0400
     environment:
-      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_pwd
       POSTGRES_DB: fit_data_db
     ports:
       - "8001:5432"
@@ -29,13 +33,15 @@ services:
 
   fit_data_bot:
     build:
-      context: ./fit_data_bot
-      secrets:
-        - source: ya_disk_oauth_token
-          mode: 0400
-        - source: tg_bot_token
-          mode: 0400
-      image: fit_data_bot
+      context: ../
+      dockerfile: ./docker_images/fit_data_bot/Dockerfile
+    secrets:
+      - source: ya_disk_oauth_token
+        mode: 0400
+      - source: tg_bot_token
+        mode: 0400
+      - source: db_pwd
+        mode: 0400
     depends_on:
       - fit_data_db
 
@@ -43,5 +49,7 @@ secrets:
   ya_disk_oauth_token:
     file: ./secrets/ya_disk_oauth_token
   tg_bot_token:
-    file: ./secrers/bot_token
+    file: ./secrets/bot_token
+  db_pwd:
+    file: ./secrets/db_pwd
     
