@@ -19,6 +19,7 @@ def get_db_pwd():
         return f.read().strip()
 
 
+# https://habr.com/ru/articles/753888/
 async def main():
     bot_token = get_telegram_token()
     bot = AsyncTeleBot(bot_token, state_storage=telebot.asyncio_storage.StateMemoryStorage())
